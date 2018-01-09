@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/white"
+    tools:context="com.joker.recyclerviewtest.MainActivity"
+    >
+
+  <com.joker.recyclerviewtest.RecyclerViewWrapper
+      android:id="@+id/rv_content"
+      android:layout_width="match_parent"
+      android:layout_height="match_parent"
+      android:layout_alignParentLeft="true"
+      android:layout_alignParentStart="true"
+      tools:background="@color/colorAccent"
+      tools:ignore="RtlHardcoded"
+      />
+
+  <TextView
+      android:id="@+id/tv_info"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_alignParentLeft="true"
+      android:layout_alignParentStart="true"
+      android:textColor="#ff0000"
+      tools:background="@color/colorPrimaryDark"
+      tools:ignore="RtlHardcoded"
+      tools:text="1"
+      />
+
+  <ScrollView
+      android:id="@+id/sv_content"
+      android:layout_width="wrap_content"
+      android:layout_height="100dp"
+      android:layout_above="@id/btn_clear"
+      android:scrollbars="none"
+      >
+
+    <TextView
+        android:id="@+id/tv_bind_info"
+        android:layout_width="wrap_content"
+        android:layout_height="100dp"
+        />
+  </ScrollView>
+
+  <Button
+      android:id="@+id/btn_clear"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_alignParentBottom="true"
+      android:text="清除"
+      tools:ignore="HardcodedText"
+      />
+
+</RelativeLayout>
