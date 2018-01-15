@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -8,12 +9,25 @@
     tools:context="com.joker.recyclerviewtest.MainActivity"
     >
 
+  <android.support.v7.widget.Toolbar
+      android:id="@+id/tb_title"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_alignParentStart="true"
+      android:layout_alignParentTop="true"
+      android:background="@color/colorPrimaryDark"
+      android:theme="@style/ToolbarTheme"
+      android:visibility="gone"
+      app:title="快试试刷新吧"
+      app:titleTextColor="@color/text_color"
+      tools:background="#fff000"
+      />
+
   <com.joker.recyclerviewtest.RecyclerViewWrapper
       android:id="@+id/rv_content"
       android:layout_width="match_parent"
       android:layout_height="match_parent"
-      android:layout_alignParentLeft="true"
-      android:layout_alignParentStart="true"
+      android:layout_below="@+id/tb_title"
       tools:background="@color/colorAccent"
       tools:ignore="RtlHardcoded"
       />
@@ -33,16 +47,17 @@
   <ScrollView
       android:id="@+id/sv_content"
       android:layout_width="wrap_content"
-      android:layout_height="100dp"
+      android:layout_height="120dp"
       android:layout_above="@id/btn_clear"
-      android:scrollbars="none"
       >
 
     <TextView
         android:id="@+id/tv_bind_info"
         android:layout_width="wrap_content"
-        android:layout_height="100dp"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
         />
+
   </ScrollView>
 
   <Button

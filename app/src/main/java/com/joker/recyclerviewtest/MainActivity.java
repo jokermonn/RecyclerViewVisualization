@@ -1,17 +1,17 @@
 package com.joker.recyclerviewtest;
 
 import android.annotation.SuppressLint;
-import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Rect;
-import android.graphics.drawable.Drawable;
-import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.Toolbar;
 import android.util.SparseArray;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ScrollView;
@@ -24,13 +24,17 @@ import java.util.List;
  * Create by @author jokermonn
  */
 public class MainActivity extends AppCompatActivity {
-  private List<String> data = new ArrayList<>(32);
+  private List<Character> data = new ArrayList<>(32);
   private TextView mBindInfo;
   private ScrollView mSV;
+  private Adapter mAdapter;
+  private RecyclerViewWrapper mRv;
+  private TextView mTv;
+  private int refreshCount = 0;
 
   {
     for (int i = 1; i < 33; i++) {
-      data.add(String.valueOf(i));
+      data.add((char) (i + 64));
     }
   }
 
@@ -38,8 +42,12 @@ public class MainActivity extends AppCompatActivity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main);
-    final RecyclerViewWrapper rv = findViewById(R.id.rv_content);
-    final TextView tv = findViewById(R.id.tv_info);
+    Toolbar toolbar = findViewById(R.id.tb_title);
+    // 如果你要试试刷新机制的话
+    // toolbar.setVisibility(View.VISIBLE);
+    setSupportActionBar(toolbar);
+    mRv = findViewById(R.id.rv_content);
+    mTv = findViewById(R.id.tv_info);
     mBindInfo = findViewById(R.id.tv_bind_info);
     mSV = findViewById(R.id.sv_content);
     findViewById(R.id.btn_clear).setOnClickListener(new View.OnClickListener() {
@@ -47,15 +55,17 @@ public class MainActivity extends AppCompatActivity {
         mBindInfo.setText("");
       }
     });
-    rv.setAdapter(new Adapter());
-    rv.setLayoutListener(new RecyclerViewWrapper.LayoutListener() {
+    mAdapter = new Adapter();
+    mRv.setAdapter(mAdapter);
+    final LinearLayoutManager layoutManager = new LinearLayoutManager(MainActivity.this);
+    mRv.setLayoutListener(new RecyclerViewWrapper.LayoutListener() {
       @SuppressWarnings("unchecked") @Override public void beforeLayout() {
         try {
           Field mRecycler =
               Class.forName("android.support.v7.widget.RecyclerView").getDeclaredField("mRecycler");
           mRecycler.setAccessible(true);
           RecyclerView.Recycler recyclerInstance =
-              (RecyclerView.Recycler) mRecycler.get(rv);
+              (RecyclerView.Recycler) mRecycler.get(mRv);
 
           Class<?> recyclerClass = Class.forName(mRecycler.getType().getName());
           Field mAttachedScrap = recyclerClass.getDeclaredField("mAttachedScrap");
@@ -71,22 +81,57 @@ public class MainActivity extends AppCompatActivity {
 
       @Override
       public void afterLayout() {
-        showMessage(rv, tv);
+        // 第二种方式：添加在这里
+        //rv.getRecycledViewPool().setMaxRecycledViews(0, 8);
+        //for (int i = 0; i < 8; i++) {
+        //  Adapter.ViewHolder viewHolder = adapter.createViewHolder(rv, 0);
+        //  rv.getRecycledViewPool().putRecycledView(viewHolder);
+        //}
+        showMessage(mRv, mTv, layoutManager);
       }
     });
-    rv.addItemDecoration(new ItemDecoration());
-    rv.setLayoutManager(new LinearLayoutManager(MainActivity.this));
-    rv.addOnScrollListener(new RecyclerView.OnScrollListener() {
+    mRv.addItemDecoration(new ItemDecoration());
+    mRv.setLayoutManager(layoutManager);
+    mRv.addOnScrollListener(new RecyclerView.OnScrollListener() {
       @Override
       public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-        mSV.fullScroll(ScrollView.FOCUS_DOWN);
-        showMessage(rv, tv);
+        showMessage();
       }
     });
+    // 第一种方式：添加在这里
+    //rv.getRecycledViewPool().setMaxRecycledViews(0, 8);
+    //for (int i = 0; i < 8; i++) {
+    //  Adapter.ViewHolder viewHolder = adapter.createViewHolder(rv, 0);
+    //  rv.getRecycledViewPool().putRecycledView(viewHolder);
+    //}
+  }
+
+  private void showMessage() {
+    showMessage(mRv, mTv, (LinearLayoutManager) mRv.getLayoutManager());
+    mSV.fullScroll(ScrollView.FOCUS_DOWN);
+  }
+
+  @Override public boolean onCreateOptionsMenu(Menu menu) {
+    getMenuInflater().inflate(R.menu.toolbar_menu, menu);
+    return true;
+  }
+
+  @Override public boolean onOptionsItemSelected(MenuItem item) {
+    data.add(1, (char) ((refreshCount++) + 33));
+    switch (item.getItemId()) {
+      case R.id.part_refresh:
+        mAdapter.notifyItemInserted(1);
+        return true;
+      case R.id.all_refresh:
+        mAdapter.notifyDataSetChanged();
+        return true;
+    }
+    return false;
   }
 
   @SuppressLint("SetTextI18n") @SuppressWarnings("unchecked")
-  private void showMessage(RecyclerViewWrapper rv, TextView tv) {
+  private void showMessage(RecyclerViewWrapper rv, TextView tv,
+      LinearLayoutManager layoutManager) {
     try {
       Field mRecycler =
           Class.forName("android.support.v7.widget.RecyclerView").getDeclaredField("mRecycler");
@@ -124,6 +169,7 @@ public class MainActivity extends AppCompatActivity {
               + mViewCacheSize
               + "\n"
               + getMChangedScrapViewsInfo(mChanged)
+              + getMCacheViewTargetPositionInfo(rv, layoutManager)
               + getMCachedViewsInfo(mCached)
               + getRVPoolInfo(recyclerPoolClass, recycledViewPool)
       );
@@ -132,11 +178,42 @@ public class MainActivity extends AppCompatActivity {
     }
   }
 
-  @SuppressLint("SetTextI18n") public void setText(String append) {
-    mBindInfo.setText(mBindInfo.getText() + append);
+  private String getMCacheViewTargetPositionInfo(RecyclerView recycledView,
+      LinearLayoutManager layoutManager) {
+    int lastItemPosition = layoutManager.findLastVisibleItemPosition();
+    int firstItemPosition = layoutManager.findFirstVisibleItemPosition();
+
+    try {
+      Field mAdapterHelper = Class.forName("android.support.v7.widget.RecyclerView")
+          .getDeclaredField("mAdapterHelper");
+      mAdapterHelper.setAccessible(true);
+      Object o = mAdapterHelper.get(recycledView);
+
+      Field mLayoutStateField = layoutManager.getClass().getDeclaredField("mLayoutState");
+      mLayoutStateField.setAccessible(true);
+      Class<?> layoutStateClass =
+          Class.forName("android.support.v7.widget.LinearLayoutManager$LayoutState");
+      Field mCurrentPositionField = layoutStateClass.getDeclaredField("mCurrentPosition");
+      mCurrentPositionField.setAccessible(true);
+
+      return "target mCachedView position:" + mCurrentPositionField.get(
+          mLayoutStateField.get(recycledView.getLayoutManager())) + "\n";
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    return "";
   }
 
-  @NonNull @SuppressWarnings("unchecked")
+  @SuppressLint("SetTextI18n") public void appendText(final String append) {
+    mBindInfo.post(new Runnable() {
+      @Override public void run() {
+        mBindInfo.setText(mBindInfo.getText() + append);
+        mSV.fullScroll(ScrollView.FOCUS_DOWN);
+      }
+    });
+  }
+
+  @SuppressWarnings("unchecked")
   private String getRVPoolInfo(Class<?> aClass, RecyclerView.RecycledViewPool recycledViewPool) {
     try {
       Field mScrapField = aClass.getDeclaredField("mScrap");
@@ -146,7 +223,9 @@ public class MainActivity extends AppCompatActivity {
       Class<?> scrapDataClass =
           Class.forName("android.support.v7.widget.RecyclerView$RecycledViewPool$ScrapData");
       Field mScrapHeapField = scrapDataClass.getDeclaredField("mScrapHeap");
+      Field mMaxScrapField = scrapDataClass.getDeclaredField("mMaxScrap");
       mScrapHeapField.setAccessible(true);
+      mMaxScrapField.setAccessible(true);
       String s = "mRecyclerPool（四缓） info:\n";
       for (int i = 0; i < mScrap.size(); i++) {
         ArrayList<RecyclerView.ViewHolder> item =
@@ -154,6 +233,8 @@ public class MainActivity extends AppCompatActivity {
         for (int j = 0; j < item.size(); j++) {
           if (j == item.size() - 1) {
             s += ">>> ";
+          } else if (j == 0) {
+            s += "mScrap[" + i + "] max size is:" + (mMaxScrapField.get(mScrap.get(i))) + "\n";
           }
           s += "mScrap[" + i + "] 中的 mScrapHeap[" + j + "] info is:" + item.get(j) + "\n";
         }
@@ -171,9 +252,6 @@ public class MainActivity extends AppCompatActivity {
     if (viewHolders.size() > 0) {
       int i = 0;
       for (; i < viewHolders.size(); i++) {
-        if (i == viewHolders.size() - 1) {
-          s += ">>> ";
-        }
         s += "mCachedViews[" + i + "] is " + viewHolders.get(i).toString() + "\n";
       }
 
@@ -188,14 +266,10 @@ public class MainActivity extends AppCompatActivity {
     } else {
       s += "\n\n\n";
     }
-    return "mCachedViews（二缓）current size is:"
-        + viewHolders.size()
-        + "\n"
-        + s
+    return s
         + "\n";
   }
 
-  @NonNull
   private String getMChangedScrapViewsInfo(ArrayList<RecyclerView.ViewHolder> viewHolders) {
     if (viewHolders != null) {
       String s = "";
@@ -217,13 +291,8 @@ public class MainActivity extends AppCompatActivity {
     final int TYPE_1 = 0;
     final int TYPE_2 = 1;
 
-    @Override public void setHasStableIds(boolean hasStableIds) {
-      super.setHasStableIds(hasStableIds);
-    }
-
-    @Override
-    public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-      setText(viewType == TYPE_1 ? ""
+    @Override public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+      appendText(viewType == TYPE_1 ? ""
           + "\nItem1 createViewHolder" : "\nItem2 createViewHolder");
       return new ViewHolder(
           LayoutInflater.from(MainActivity.this)
@@ -237,8 +306,8 @@ public class MainActivity extends AppCompatActivity {
 
     @SuppressLint("SetTextI18n") @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
-      String targetText = data.get(position);
-      setText("\n『" + targetText + "』 BindViewHolder");
+      String targetText = data.get(position) + "(layoutPosition:" + position + ")";
+      appendText("\n『" + targetText + "』 BindViewHolder");
       holder.tv.setText(targetText);
     }
 

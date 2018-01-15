@@ -10,4 +10,8 @@
     <item name="windowNoTitle">true</item>
   </style>
 
+  <style name="ToolbarTheme">
+    <item name="actionMenuTextColor">@color/text_color</item>
+  </style>
+
 </resources>

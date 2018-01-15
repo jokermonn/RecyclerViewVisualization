@@ -25,6 +25,6 @@ public class Item1 extends LinearLayout {
   }
 
   @Override public String toString() {
-    return "Item1---" + tv.getText();
+    return "Item1---『" + tv.getText() + "』";
   }
 }
